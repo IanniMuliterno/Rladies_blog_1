@@ -50,16 +50,85 @@ dados_olimpiadas %>%
 ```
 
 
-Ao analisar esses dados, podemos responder várias perguntas interessantes. Por exemplo, qual país obteve mais medalhas na natação nos Jogos Olímpicos de 2021? Quais são os países com os melhores tempos de natação? Há alguma diferença significativa nos tempos entre os atletas homens e mulheres?
+Ao analisar esses dados, podemos responder várias perguntas interessantes. Por exemplo, qual país obteve mais medalhas na natação nos Jogos Olímpicos de 2021? Há alguma diferença significativa na quantidade de medalhas conquistadas entre os atletas homens e mulheres?
 
-Créditos deste gráfico de barras a `Erin`, professora que vocês podem encontrar aqui <https://github.com/efranke22>.
-
-
-
-Usando as ferramentas do Tidyverse, podemos criar gráficos e visualizações para ilustrar nossas descobertas. Podemos criar um gráfico de barras para mostrar as medalhas de ouro, prata e bronze conquistadas por cada país, ou um gráfico de dispersão para mostrar a relação entre o tempo de natação e a idade dos atletas.
-
-Além disso, o conjunto de dados do TidyTuesday também nos permite praticar nossas habilidades em limpeza e manipulação de dados. Podemos usar o dplyr para filtrar os dados de acordo com nossas necessidades, renomear colunas ou remover valores ausentes.
+```{r medalhas, warning=FALSE}
+#gráfico para mostrar medalhas de ouro prata e bronze conquistadas por cada país
 
 
-Por fim, esperamos que este artigo tenha inspirado você a explorar o mundo do TidyTuesday e a usar essa fonte de dados incrível para aprimorar suas habilidades em ciência de dados. Lembre-se que a comunidade tá aqui para te ajudar a alcançar seu objetivo em ciência de dados!
+paralympic_total <- dados_olimpiadas %>%
+  filter(type == "Swimming") %>%
+  group_by(abb) %>%
+  count() %>%
+  arrange(desc(n))
+
+paralympic_byMedal <- dados_olimpiadas %>%
+  filter(type == "Swimming") %>%
+  group_by(abb, medal) %>%
+  count()
+
+paralympic_swimming <- paralympic_byMedal %>%
+  left_join(paralympic_total, by = "abb") %>%
+  rename(number = n.x, total_medals = n.y)
+
+
+#garantindo que no plot de top five teremos ordenação de acordo com o país que ganhou mais 
+top5 <- paralympic_total$abb[1:5]
+tail5 <- paralympic_total$abb[(nrow(paralympic_total)-4):nrow(paralympic_total)] 
+
+table_top5 <- paralympic_swimming %>% 
+  filter(abb %in% top5) %>%
+  mutate(abb = factor(abb,levels = top5)) 
+
+table_tail5 <- paralympic_swimming %>% 
+  filter(abb %in% tail5) %>%
+  mutate(abb = factor(abb,levels = tail5)) 
+
+
+plot2 <- table_top5 %>% 
+  ggplot(aes(x = abb, y=number, fill = medal))+
+  geom_col()+
+  theme_minimal()+
+  scale_fill_manual(values = c("#D89581", "#D4AF37", "#C0C0C0"))+
+  scale_x_discrete(expand = c(0,0)) +
+  labs(x="", y="", fill = "", title = "Swimming medals for top 5 countries")+
+  theme(legend.position = "none",
+        plot.title.position = "plot", 
+        plot.title = element_text(family = "mono", face = "bold", size = 8),
+        panel.grid.major.x = element_blank(), 
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank(), 
+        axis.text = element_text(family = "mono", face = "bold", size = 8))+
+  ggtitle("Medalhas de ouro, prata e bronze conquistada pelos países de melhor desempenho")
+
+
+plot3 <- table_tail5 %>% 
+  ggplot(aes(x = abb, y=number, fill = medal))+
+  geom_col()+
+  theme_minimal()+
+  scale_fill_manual(values = c("#D89581", "#D4AF37", "#C0C0C0"))+
+  scale_x_discrete(expand = c(0,0)) +
+  labs(x="", y="", fill = "", title = "Swimming medals for top 5 countries")+
+  theme(legend.position = "none",
+        plot.title.position = "plot", 
+        plot.title = element_text(family = "mono", face = "bold", size = 8),
+        panel.grid.major.x = element_blank(), 
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank(), 
+        axis.text = element_text(family = "mono", face = "bold", size = 8))+
+  ggtitle("Medalhas de ouro, prata e bronze conquistada pelos países de pior desempenho")
+```
+
+
+Apesar de algumas alterações que fiz, os créditos deste gráfico de barras são da `Erin`, professora que vocês podem encontrar aqui <https://github.com/efranke22>. Continuando podemos ver a diferença entre a quantidade de medalhas conquistadas entre os atletas homens e mulheres? Para isso, veremos primeiro o histograma de nadadores homens e mulheres por país, em seguida o box plot das medalhas conquistadas por cada um, agrupado também pelo tipo de medalha.
+
+```{r}
+
+```
+
+No Tidytuesday anterior a este, também foi lançada uma base focada nas olimpíadas, verifiquei que alguns atletas existem nas duas bases e taí uma curiosidade que vi pela primeira vez, bases de semana subsequente que podem trazer mais insights juntas. Isso também é algo que no mundo real precisamos fazer bastante, chamamos de enriquecimento de base.
+
+Essa foi uma breve demonstração do quanto o Tidytuesday é interessante e como podemos praticar nossas habilidades em tratamento de dados e análise. Esperamos que este artigo tenha inspirado você a explorar o mundo do TidyTuesday, e colocar a mão na massa no R, usando essa fonte de dados incrível para aprimorar suas habilidades em ciência de dados. Lembre-se que a comunidade tá aqui para te ajudar a alcançar seu objetivo em ciência de dados!
 
