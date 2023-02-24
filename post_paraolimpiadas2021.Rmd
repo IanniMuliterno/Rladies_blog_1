@@ -1,0 +1,65 @@
+---
+title: "Olimpiadas"
+author: "Ianní"
+date: "2023-02-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readr)
+library(ggplot2)
+
+```
+
+Olá, pessoal!
+
+Se você já é um entusiasta de ciência de dados, provavelmente já ouviu falar do TidyTuesday. Se está iniciando, este é um ótimo lugar para conseguir dados reais para praticar e criar um portfolio. O tidytuesday é um projeto semanal do R for Data Science Community, que tem como objetivo ajudar as pessoas a aprender e praticar a análise de dados em R usando o pacote Tidyverse, conheça aqui <https://github.com/rfordatascience/tidytuesday>. 
+
+Cada semana, é lançado um novo conjunto de dados, geralmente em formato de planilha, que pode ser baixado gratuitamente. A comunidade é então convidada a explorar, visualizar e analisar esses dados usando as ferramentas do Tidyverse, como o ggplot2 para gráficos e o dplyr para manipulação de dados. 
+
+Hoje vamos dar uma olhada na base do início de agosto de 2021, quando o TidyTuesday lançou um conjunto de dados fascinante sobre as paraolimpiadas de 2021. O conjunto de dados inclui informações sobre características dos atletas, o país de origem, o tipo de prova, entre outras variáveis. 
+
+Para começar vamos carregar os dados! Lembrando de manter a boa prática de iniciar o script carregando as bibliotecas necessárias, vai ficar comentado aqui (com # na frente, para os avisos não poluirem o post).
+```{r intro,warning=FALSE}
+#library(tidyverse)
+#library(readr)
+#library(ggplot2)
+
+dados_olimpiadas <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-03/athletes.csv")
+
+```
+
+Antes de começar, outra boa prática é conhecer os dados, quais colunas possui? Como está o preenchimento das variáveis? 
+```{r isna}
+colSums(is.na(dados_olimpiadas))
+```
+
+No tidytuesday os dados costumam vir mais arrumados, porém no mundo real é comum encontrarmos erros no preenchimento, sejam eles sistematicos, onde por exemplo a ferramenta que mede velocidade dos competidores falha e traz valores muito grandes ou negativos, ou poderia ser também alguém que preencheu errado o campo de medalha e colocou por exemplo "metal" ao invés de "prata". No repositório desta base, está descrito o que cada coluna representa, te convido para escrever como lição de casa o código que checa as variáveis categóricas em busca de nomes estranhos que não condizem com o que deveria estar naquela variável. Como incentivo, deixo aqui o check de variáveis numéricas. 
+
+Para não ficar um post massivo, vamos focar em natação.
+
+```{r check_numeric, warning=FALSE}
+dados_olimpiadas %>% 
+  select_if(.,is.numeric) %>%
+  pivot_longer(1:2, names_to = 'variaveis', values_to = 'valor') %>% 
+  ggplot(aes(x = valor)) +
+  geom_histogram() +
+  facet_wrap(~variaveis,scales = 'free')
+```
+
+
+Ao analisar esses dados, podemos responder várias perguntas interessantes. Por exemplo, qual país obteve mais medalhas na natação nos Jogos Olímpicos de 2021? Quais são os países com os melhores tempos de natação? Há alguma diferença significativa nos tempos entre os atletas homens e mulheres?
+
+Créditos deste gráfico de barras a `Erin`, professora que vocês podem encontrar aqui <https://github.com/efranke22>.
+
+
+
+Usando as ferramentas do Tidyverse, podemos criar gráficos e visualizações para ilustrar nossas descobertas. Podemos criar um gráfico de barras para mostrar as medalhas de ouro, prata e bronze conquistadas por cada país, ou um gráfico de dispersão para mostrar a relação entre o tempo de natação e a idade dos atletas.
+
+Além disso, o conjunto de dados do TidyTuesday também nos permite praticar nossas habilidades em limpeza e manipulação de dados. Podemos usar o dplyr para filtrar os dados de acordo com nossas necessidades, renomear colunas ou remover valores ausentes.
+
+
+Por fim, esperamos que este artigo tenha inspirado você a explorar o mundo do TidyTuesday e a usar essa fonte de dados incrível para aprimorar suas habilidades em ciência de dados. Lembre-se que a comunidade tá aqui para te ajudar a alcançar seu objetivo em ciência de dados!
+
