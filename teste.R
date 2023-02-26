@@ -8,7 +8,7 @@
 library(tidyverse)
 library(readr)
 library(ggplot2)
-dados_olimpiadas <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-03/athletes.csv")
+  dados_olimpiadas <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-03/athletes.csv")
 
 
 colSums(is.na(dados_olimpiadas))
@@ -97,18 +97,176 @@ ggplot(dados_olimpiadas, aes(x = year, y = time, color = sex)) +
   ylab("Tempo de natação (s)") +
   ggtitle("Relação entre idade e numero de medalhes por evento - Olimpíadas 2021")
 
-# quais esportes tem e não tem guia
+#Continuando podemos ver a diferença entre a quantidade de medalhas conquistadas entre os atletas homens 
+#e mulheres? Para isso, veremos primeiro o histograma de nadadores homens e mulheres por país, em seguida 
+#o box plot das medalhas conquistadas por cada um, agrupado também pelo tipo de medalha.
 
 
-#Usando o dplyr para filtrar os dados e criar uma tabela com os países com os melhores tempos médios de natação:
+dados_olimpiadas %>%
+  filter(type == "Swimming") %>%
+  filter(gender != 'Mixed') %>% 
+  group_by(abb,athlete,gender) %>% 
+  count() %>% 
+  group_by(abb,gender) %>% 
+  count() %>% 
+  ggplot(aes(x = n, fill = gender)) +
+  geom_histogram(alpha = .6) +
+  ggtitle("Histograma das medalhas conquistadas por gênero em cada país") +
+  theme(
+    panel.background = element_rect(fill = "white")
+  )
 
-melhores_tempos_por_pais <- dados_olimpiadas %>%
-  filter(Event == "Men's 400m Freestyle" | Event == "Women's 400m Freestyle") %>%
-  group_by(NOC, Sex) %>%
-  summarise(tempo_medio = mean(Time)) %>%
-  ungroup() %>%
-  group_by(NOC) %>%
-  summarise(melhor_tempo_medio = min(tempo_medio)) %>%
-  arrange(melhor_tempo_medio)
 
-melhores_tempos_por_pais
+dt_perc_gender <- dados_olimpiadas %>%
+  filter(type == "Swimming") %>%
+  filter(gender != 'Mixed') %>% 
+  group_by(abb,year,gender,athlete) %>% 
+  count() %>% 
+  group_by(abb,year,gender) %>%
+  count() %>% 
+  pivot_wider(names_from  = gender,values_from = n) %>% 
+  mutate(across(ends_with('en'), ~ifelse(is.na(.),0,. ) ) ) %>% 
+  group_by(abb) %>% 
+  summarize(perc_mulheres = mean(Women/(Women+Men)))
+
+linha <- median(dt_perc_gender$perc_mulheres)
+
+dt_perc_gender %>%   
+ggplot(aes(x = perc_mulheres )) +
+  geom_histogram()+
+  geom_vline(mapping = aes(xintercept=linha),linetype = 2,color = 'red') +
+  annotate("text", x=linha+0.05, y=15, label= "mediana",color = 'red') +
+  ggtitle("Histograma do percentual de mulheres que os países levam em cada olimpíada") +
+  theme(
+    panel.background = element_rect(fill = "white")
+  )
+  
+  
+dados_olimpiadas %>%
+  filter(type == "Swimming") %>%
+  filter(gender != 'Mixed') %>% 
+  group_by(abb,athlete,gender,medal) %>% 
+  count() %>% 
+  group_by(abb,gender,medal) %>% 
+  count() %>% 
+  ggplot(aes(y = n, fill = gender, x = medal)) +
+  geom_boxplot()+
+
+  ggtitle("Box-plot das medalhas conquistadas por tipo de medalha e gênero em cada país")+
+  theme(
+    panel.background = element_rect(fill = "white")
+  )
+#quantas medalhas já ganhou, de quantas olimpíadas já participou, proporção de medalhas por tipo, e um
+#kpi de quantidade de medalhas por olimpíada
+
+#variável resposta : última olimpíada de cada atleta
+resposta <- dados_olimpiadas %>%
+  filter(athlete != '-') %>% 
+  filter(type == "Swimming") %>%
+  group_by(athlete,year) %>% 
+  count() %>% 
+  group_by(athlete) %>% 
+  filter(year == max(year))
+
+resposta <- dados_olimpiadas %>%
+  filter(athlete != '-') %>% 
+  filter(type == "Swimming") %>%
+  filter(year == 2016) %>% 
+  group_by(athlete) %>% 
+  count() 
+#base, tira os dados da variáveis resposta
+base <- dados_olimpiadas %>% 
+  inner_join(resposta, by = 'athlete') %>% 
+  filter(year < 2016) %>% 
+#  mutate(year = year.x) %>% 
+#  select(-year.x,-year.y,-n) %>%
+  select(-n) %>% 
+  
+  group_by(athlete) %>% 
+  summarize(total_medalhas = n(),
+            ouro = sum(medal == 'Gold'),
+            prata = sum(medal == 'Silver'),
+            bronze = sum(medal == 'Bronze'),
+            total_olympics = n_distinct(year),
+            medal_olympics_kpi = n()/n_distinct(year),
+            gender = unique(gender[gender != 'Mixed']),
+            n_eventos = n_distinct(event)) %>% 
+  mutate(ouro = ouro/total_medalhas,
+         prata = prata/total_medalhas,
+         bronze = bronze/total_medalhas)
+
+#o warning significa que o agrupamento não funcionou para alguns atletas
+base %>% group_by(athlete) %>% count() %>% arrange(desc(n))
+
+# checando, vejo que são erros, onde na coluna de nome de atletas, temos nomes de países
+manter <- base %>% 
+  group_by(athlete) %>%
+  count() %>%
+  arrange(desc(n)) %>%
+  filter(n == 1)
+
+base <- base %>% filter(athlete %in% manter$athlete)
+cor(base$total_medalhas,base$total_olympics)
+
+# escolher uma das variáveis para manter de acordo com qual traz melhor resultado para o modelo 
+# ficando sozinha
+
+#base final
+
+base_final <- base %>% 
+     inner_join(resposta, by = 'athlete') %>% 
+  mutate(y = n) %>% 
+  ungroup() %>% 
+#  select(-year,-n, -athlete)
+  select(-n, -athlete)
+
+modelo <- glm(y~.,data = base_final,family = 'poisson')
+summary(modelo)
+plot(modelo)
+
+modelo2 <- glm(y~ouro+prata+total_olympics+medal_olympics_kpi+gender+n_eventos,data = base_final,family = 'poisson')
+summary(modelo2)
+
+modelo3 <- glm(y~ouro+prata+total_olympics+medal_olympics_kpi+gender,data = base_final,family = 'poisson')
+summary(modelo3)
+plot(modelo3)
+
+modelo4 <- glm(y~ouro+total_olympics+medal_olympics_kpi+gender,data = base_final, family = 'poisson')
+summary(modelo4)
+plot(modelo4)
+
+
+modelo5 <- glm(y~total_olympics+medal_olympics_kpi+gender,data = base_final, family = 'poisson')
+summary(modelo5)
+
+modelo5 <- glm(y~medal_olympics_kpi+total_olympics,data = base_final, family = 'poisson')
+summary(modelo5)
+plot(modelo5)
+
+summary(modelo5)$deviance
+
+###################
+ggplot(modelo5, aes(x = .fitted, y = .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0)+
+  ggtitle("Gráfico de resíduos versus valor predito")+
+  theme(
+    panel.background = element_rect(fill = "white")
+  )
+
+
+#Pearson's chi-squared test: Calculate the Pearson's chi-squared goodness-of-fit test to evaluate 
+#the model's fit. This test compares the observed and expected counts for each group and determines
+#if the difference is statistically significant. 
+
+# Calculate the expected counts
+expected <- fitted(modelo5)
+
+# Calculate the Pearson's chi-squared statistic and p-value
+pearson_chisq <- sum((base_final$y - expected)^2 / expected)
+p_value <- 1 - pchisq(pearson_chisq, df = df.residual(modelo5))
+
+# Display the results
+cat("Pearson's chi-squared test:\n")
+cat("X-squared = ", pearson_chisq, ", df = ", df.residual(modelo5), ", p-value = ", p_value, "\n")
+
